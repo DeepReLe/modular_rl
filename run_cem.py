@@ -30,6 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("--env",required=True)
     parser.add_argument("--agent",required=True)
     parser.add_argument("--plot",action="store_true")
+    parser.add_argument("--solved",required=True)
     args,_ = parser.parse_known_args([arg for arg in sys.argv[1:] if arg not in ('-h', '--help')])
     env = make(args.env)
     env_spec = env.spec
@@ -50,6 +51,9 @@ if __name__ == "__main__":
         args.timestep_limit = env_spec.timestep_limit
 
     gym.logger.setLevel(logging.WARN)
+
+    env.solved_threshold = float(args.solved)
+    PAPER_STATS['_solved_threshold'] = env.solved_threshold
 
     PAPER_STATS['nb_params'] = np.prod(env.observation_space.shape)
     if isinstance(env.observation_space, Box):

@@ -55,6 +55,8 @@ def cem(f,th_mean,batch_size,n_iter,elite_frac, initial_std=1.0, extra_std=0.0, 
         PAPER_STATS['iter_validation'].append(validation)
         PAPER_STATS['iter_time'].append(end_time - start_time)
         PAPER_STATS['iter_mean'].append(ys.mean())
+        if validation > PAPER_STATS['_solved_threshold'] * 1.0:
+            break
         yield {"ys":ys,"th":th_mean,"ymean":ys.mean(), "std" : sample_std}
 
 

@@ -105,6 +105,8 @@ def run_policy_gradient_algorithm(env, agent, usercfg=None, callback=None, PAPER
         PAPER_STATS['iter_validation'].append(validation)
         PAPER_STATS['iter_time'].append(end_time - start_time)
         PAPER_STATS['iter_mean'].append(stats['EpRewMean'])
+        if validation > PAPER_STATS['_solved_threshold'] * 1.0:
+            break
         if callback: callback(stats)
 
 def get_paths(env, agent, cfg, seed_iter):
