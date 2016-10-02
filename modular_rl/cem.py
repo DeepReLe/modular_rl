@@ -2,12 +2,13 @@ from .core import *
 from . import parallel_utils
 from tabulate import tabulate
 import os
+from time import time
 
 # ================================================================
 # Cross-entropy method 
 # ================================================================
 
-def cem(f,th_mean,batch_size,n_iter,elite_frac, initial_std=1.0, extra_std=0.0, std_decay_time=1.0, pool=None):
+def cem(f,th_mean,batch_size,n_iter,elite_frac, initial_std=1.0, extra_std=0.0, std_decay_time=1.0, pool=None, PAPER_STATS=None):
     r"""
     Noisy cross-entropy method
     http://dx.doi.org/10.1162/neco.2006.18.12.2936
@@ -35,6 +36,7 @@ def cem(f,th_mean,batch_size,n_iter,elite_frac, initial_std=1.0, extra_std=0.0, 
 
     for iteration in xrange(n_iter):
 
+        start_time = time()
         extra_var_multiplier = max((1.0-iteration/float(std_decay_time)),0) # Multiply "extra variance" by this factor
         print "extra var", extra_var_multiplier
         sample_std = np.sqrt(th_std + np.square(extra_std) * extra_var_multiplier)
@@ -47,6 +49,12 @@ def cem(f,th_mean,batch_size,n_iter,elite_frac, initial_std=1.0, extra_std=0.0, 
         elite_ths = ths[elite_inds]
         th_mean = elite_ths.mean(axis=0)
         th_std = elite_ths.var(axis=0)
+        end_time = time()
+
+        validation = np.mean([f(th_mean) for _ in range(100)])
+        PAPER_STATS['iter_validation'].append(validation)
+        PAPER_STATS['iter_time'].append(end_time - start_time)
+        PAPER_STATS['iter_mean'].append(ys.mean())
         yield {"ys":ys,"th":th_mean,"ymean":ys.mean(), "std" : sample_std}
 
 
@@ -70,7 +78,7 @@ def _cem_objective(th):
 def _seed_with_pid():
     np.random.seed(os.getpid())
 
-def run_cem_algorithm(env, agent, usercfg=None, callback=None):
+def run_cem_algorithm(env, agent, usercfg=None, callback=None, PAPER_STATS=None):
     cfg = update_default_config(CEM_OPTIONS, usercfg)
     if cfg["std_decay_time"] < 0: cfg["std_decay_time"] = cfg["n_iter"] / 2 
     cfg.update(usercfg)
@@ -89,7 +97,7 @@ def run_cem_algorithm(env, agent, usercfg=None, callback=None):
     th_mean = agent.get_flat()
 
     for info in cem(_cem_objective, th_mean, cfg["batch_size"], cfg["n_iter"], cfg["elite_frac"], 
-        cfg["initial_std"], cfg["extra_std"], cfg["std_decay_time"], pool=pool):
+        cfg["initial_std"], cfg["extra_std"], cfg["std_decay_time"], pool=pool, PAPER_STATS=PAPER_STATS):
         callback(info)
         ps = np.linspace(0,100,5)
         print tabulate([ps, np.percentile(info["ys"].ravel(),ps), np.percentile(info["std"].ravel(),ps)])

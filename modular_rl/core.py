@@ -72,7 +72,7 @@ PG_OPTIONS = [
     ("lam", float, 1.0, "lambda parameter from generalized advantage estimation"),
 ]
 
-def run_policy_gradient_algorithm(env, agent, usercfg=None, callback=None):
+def run_policy_gradient_algorithm(env, agent, usercfg=None, callback=None, PAPER_STATS=None):
     cfg = update_default_config(PG_OPTIONS, usercfg)
     cfg.update(usercfg)
     print "policy gradient config", cfg
@@ -84,6 +84,7 @@ def run_policy_gradient_algorithm(env, agent, usercfg=None, callback=None):
     seed_iter = itertools.count()
 
     for _ in xrange(cfg["n_iter"]):
+        start_time = time.time()
         # Rollouts ========
         paths = get_paths(env, agent, cfg, seed_iter)
         compute_advantage(agent.baseline, paths, gamma=cfg["gamma"], lam=cfg["lam"])
@@ -97,6 +98,13 @@ def run_policy_gradient_algorithm(env, agent, usercfg=None, callback=None):
         add_prefixed_stats(stats, "vf", vf_stats)
         add_prefixed_stats(stats, "pol", pol_stats)
         stats["TimeElapsed"] = time.time() - tstart
+        end_time = time.time()
+        validation = get_paths(env, agent, cfg, seed_iter)
+        reward_key = "reward_raw" if "reward_raw" in validation[0] else "reward"
+        validation = np.mean([v[reward_key].sum() for v in validation])
+        PAPER_STATS['iter_validation'].append(validation)
+        PAPER_STATS['iter_time'].append(end_time - start_time)
+        PAPER_STATS['iter_mean'].append(stats['EpRewMean'])
         if callback: callback(stats)
 
 def get_paths(env, agent, cfg, seed_iter):

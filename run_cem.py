@@ -4,11 +4,25 @@ This script runs the cross-entropy method
 """
 
 from gym.envs import make
+from gym.spaces import Box
 from modular_rl import *
 import argparse, sys, cPickle, shutil
 import gym, logging
 
 from tabulate import tabulate
+
+global PAPER_STATS
+
+PAPER_STATS = {
+        'iter_time': [],
+        'iter_mean': [],
+        'iter_validation': [],
+        'final_score': 0.0,
+        'nb_params:': 0.0,
+        'state_size': 0.0,
+        'action_size': 0.0,
+        'continuous': False,
+        }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -22,7 +36,7 @@ if __name__ == "__main__":
     mondir = args.outfile + ".dir"
     if os.path.exists(mondir): shutil.rmtree(mondir)
     os.mkdir(mondir)
-    env.monitor.start(mondir,video_callable=None if args.video else VIDEO_NEVER)
+    # env.monitor.start(mondir,video_callable=None if args.video else VIDEO_NEVER)
     agent_ctor = get_agent_cls(args.agent)
     update_argument_parser(parser, agent_ctor.options)
     update_argument_parser(parser, CEM_OPTIONS)
@@ -37,6 +51,18 @@ if __name__ == "__main__":
 
     gym.logger.setLevel(logging.WARN)
 
+    PAPER_STATS['nb_params'] = np.prod(env.observation_space.shape)
+    if isinstance(env.observation_space, Box):
+        PAPER_STATS['continuous'] = True
+        PAPER_STATS['state_size'] = np.prod(env.observation_space.shape)
+    else:
+        PAPER_STATS['state_size'] = env.observation_space.n
+    if isinstance(env.action_space, Box):
+        PAPER_STATS['continuous'] = True
+        PAPER_STATS['action_size'] = np.prod(env.action_space.shape)
+    else:
+        PAPER_STATS['action_size'] = env.action_space.n
+
     COUNTER = 0
     def callback(stats):
         global COUNTER
@@ -49,9 +75,16 @@ if __name__ == "__main__":
         COUNTER += 1
         if args.snapshot_every and ((COUNTER % args.snapshot_every==0) or (COUNTER==args.n_iter)): 
             hdf['/agent_snapshots/%0.4i'%COUNTER] = np.array(cPickle.dumps(agent,-1))
-    run_cem_algorithm(env, agent, callback=callback, usercfg = cfg)
+
+
+    run_cem_algorithm(env, agent, callback=callback, usercfg = cfg, PAPER_STATS=PAPER_STATS)
 
     hdf['env_id'] = env_spec.id
     try: hdf['env'] = np.array(cPickle.dumps(env, -1))
     except Exception: print "failed to pickle env" #pylint: disable=W0703
-    env.monitor.close()
+    # env.monitor.close()
+
+    PAPER_STATS['final_score'] = PAPER_STATS['iter_validation'][-1]
+    fname = 'results/results_cem_' + args.env + '_' + str(PAPER_STATS['nb_params']) + '_' + str(args.n_iter) + '_' + str(args.batch_size) + '.pkl'
+    with open(fname, 'wb') as f:
+        cPickle.dump(PAPER_STATS, f)
