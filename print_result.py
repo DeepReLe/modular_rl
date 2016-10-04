@@ -1,3 +1,10 @@
+"""
+Script to load .pkl result files.
+
+Usage:
+$ python print_result.py result.pkl
+"""
+
 import argparse
 import cPickle
 import os
