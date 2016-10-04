@@ -77,18 +77,20 @@ if __name__ == "__main__":
         print "*********** Iteration %i ****************" % COUNTER
         print tabulate(filter(lambda (k,v) : np.asarray(v).size==1, stats.items())) #pylint: disable=W0110
         COUNTER += 1
-        if args.snapshot_every and ((COUNTER % args.snapshot_every==0) or (COUNTER==args.n_iter)): 
-            hdf['/agent_snapshots/%0.4i'%COUNTER] = np.array(cPickle.dumps(agent,-1))
+        #if args.snapshot_every and ((COUNTER % args.snapshot_every==0) or (COUNTER==args.n_iter)): 
+        #    hdf['/agent_snapshots/%0.4i'%COUNTER] = np.array(cPickle.dumps(agent,-1))
 
 
     run_cem_algorithm(env, agent, callback=callback, usercfg = cfg, PAPER_STATS=PAPER_STATS)
 
-    hdf['env_id'] = env_spec.id
-    try: hdf['env'] = np.array(cPickle.dumps(env, -1))
-    except Exception: print "failed to pickle env" #pylint: disable=W0703
+    #hdf['env_id'] = env_spec.id
+    #try: hdf['env'] = np.array(cPickle.dumps(env, -1))
+    #except Exception: 
+    #    print "failed to pickle env" #pylint: disable=W0703
+    #    raise
     # env.monitor.close()
 
     PAPER_STATS['final_score'] = PAPER_STATS['iter_validation'][-1]
     fname = 'results/results_cem_' + args.env + '_' + str(PAPER_STATS['nb_params']) + '_' + str(args.n_iter) + '_' + str(args.batch_size) + '.pkl'
-    with open(fname, 'wb') as f:
+    with open(fname, 'ab') as f:
         cPickle.dump(PAPER_STATS, f)
